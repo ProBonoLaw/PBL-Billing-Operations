@@ -1,0 +1,73 @@
+name: Deploy AKS Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: billing-operations-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event.repository.private == true && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_WORKLOAD_IDENTITY_CLIENT_ID: ${{ vars.AZURE_WORKLOAD_IDENTITY_CLIENT_ID }}
+      AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+      AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+      IMAGE_REPOSITORY: ${{ vars.ACR_LOGIN_SERVER }}/billing-operations
+      GATEWAY_REPLICAS: ${{ vars.GATEWAY_REPLICAS }}
+      INVOICE_GENERATOR_SUSPEND: ${{ vars.INVOICE_GENERATOR_SUSPEND }}
+      IMAGE_TAG: sha-${{ github.sha }}
+      DEPLOY_ENVIRONMENT: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check production configuration
+        env:
+          AKS_DEPLOY_CLIENT_ID: ${{ vars.AKS_DEPLOY_CLIENT_ID }}
+        run: |
+          for name in AKS_DEPLOY_CLIENT_ID AZURE_SUBSCRIPTION_ID AZURE_TENANT_ID AZURE_WORKLOAD_IDENTITY_CLIENT_ID AKS_RESOURCE_GROUP AKS_CLUSTER_NAME KEY_VAULT_NAME ACR_NAME ACR_LOGIN_SERVER GATEWAY_REPLICAS INVOICE_GENERATOR_SUSPEND; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Set production environment variable $name before deploying"
+              exit 1
+            fi
+          done
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AKS_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Check production registry and cluster
+        run: |
+          actual_login_server=$(az acr show --subscription "$AZURE_SUBSCRIPTION_ID" --name "$ACR_NAME" --query loginServer --output tsv)
+          if [[ "$actual_login_server" != "$ACR_LOGIN_SERVER" ]]; then
+            echo "::error::Production ACR login server does not match registry"
+            exit 1
+          fi
+          az aks show --subscription "$AZURE_SUBSCRIPTION_ID" --resource-group "$AKS_RESOURCE_GROUP" --name "$AKS_CLUSTER_NAME" --query id --output tsv
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test tests/BillingOperations.Tests/BillingOperations.Tests.csproj -c Release
+      - uses: docker/setup-buildx-action@v4
+      - name: Sign in to production registry
+        run: az acr login --subscription "$AZURE_SUBSCRIPTION_ID" --name "$ACR_NAME"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/billing-operations:sha-${{ github.sha }}
+      - name: Deploy billing operations to production AKS
+        run: bash .github/scripts/deploy-aks.sh

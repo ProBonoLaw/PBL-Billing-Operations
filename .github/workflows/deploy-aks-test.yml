@@ -1,0 +1,81 @@
+name: Deploy AKS Test
+
+on:
+  workflow_run:
+    workflows:
+      - Container image
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy, such as sha-<full commit SHA>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event.repository.private == true &&
+      ((github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    environment: test
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_WORKLOAD_IDENTITY_CLIENT_ID: ${{ vars.AZURE_WORKLOAD_IDENTITY_CLIENT_ID }}
+      AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+      AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+      IMAGE_REPOSITORY: ${{ vars.ACR_LOGIN_SERVER }}/billing-operations
+      IMAGE_TAG: ${{ github.event_name == 'workflow_run' && format('sha-{0}', github.event.workflow_run.head_sha) || inputs.image_tag }}
+      DEPLOY_ENVIRONMENT: test
+      INVOICE_GENERATOR_SUSPEND: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - name: Check test configuration
+        env:
+          AKS_DEPLOY_CLIENT_ID: ${{ vars.AKS_DEPLOY_CLIENT_ID }}
+        run: |
+          for name in AKS_DEPLOY_CLIENT_ID AZURE_SUBSCRIPTION_ID AZURE_TENANT_ID AZURE_WORKLOAD_IDENTITY_CLIENT_ID AKS_RESOURCE_GROUP AKS_CLUSTER_NAME KEY_VAULT_NAME ACR_NAME ACR_LOGIN_SERVER; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Set test environment variable $name before deploying"
+              exit 1
+            fi
+          done
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AKS_DEPLOY_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Validate billing image tag
+        run: |
+          if [[ "$IMAGE_TAG" =~ ^[[:xdigit:]]{40}$ ]]; then
+            IMAGE_TAG="sha-${IMAGE_TAG}"
+          fi
+          image_tags=$(az acr repository show-tags \
+            --subscription "$AZURE_SUBSCRIPTION_ID" \
+            --name "$ACR_NAME" \
+            --repository billing-operations \
+            --output tsv)
+          if ! printf '%s\n' "$image_tags" | grep -Fxq "$IMAGE_TAG"; then
+            echo "::error::ACR does not contain billing-operations:$IMAGE_TAG"
+            exit 1
+          fi
+      - name: Deploy billing operations
+        run: bash .github/scripts/deploy-aks.sh

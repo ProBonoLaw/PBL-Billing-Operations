@@ -1,0 +1,48 @@
+name: Integrate public main into private main
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-main-integration
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    if: >-
+      github.event.repository.private == true &&
+      vars.ENABLE_PUBLIC_MAIN_SYNC == 'true' &&
+      github.ref == 'refs/heads/private-sync-control'
+    runs-on: ubuntu-latest
+    # Configure this environment to allow only the protected control branch.
+    environment: public-main-integration
+    steps:
+      - name: Create private integration token
+        id: integration-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_MERGE_APP_ID }}
+          private-key: ${{ secrets.SYNC_MERGE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-workflows: write
+      - uses: actions/checkout@v4
+        with:
+          ref: private-sync-control
+          fetch-depth: 0
+          persist-credentials: false
+          token: ${{ steps.integration-token.outputs.token }}
+      - name: Merge public commits and push private main
+        env:
+          GH_TOKEN: ${{ steps.integration-token.outputs.token }}
+          PUBLIC_REPOSITORY_URL: https://github.com/ProBonoLaw/PBL-Billing-Operations.git
+        run: |
+          gh auth setup-git --hostname github.com
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp .github/scripts/integrate-public-main.sh "$RUNNER_TEMP/integrate-public-main.sh"
+          bash "$RUNNER_TEMP/integrate-public-main.sh"

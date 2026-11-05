@@ -1,0 +1,200 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aimie-stats-retriever
+  namespace: billing-operations
+spec:
+  schedule: "*/30 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: billing-operations
+          restartPolicy: Never
+          volumes:
+            - name: appsettings
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: billing-operations-appsettings
+          containers:
+            - name: worker
+              image: <image-repository>:<image-tag>
+              env:
+                - name: ROLE
+                  value: aimie-stats
+              volumeMounts:
+                - name: appsettings
+                  mountPath: /mnt/keyvault
+                  readOnly: true
+              resources:
+                requests: {cpu: 25m, memory: 256Mi}
+                limits: {cpu: "1", memory: 1Gi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aimie-token-usage
+  namespace: billing-operations
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: billing-operations
+          restartPolicy: Never
+          volumes:
+            - name: appsettings
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: billing-operations-appsettings
+          containers:
+            - name: worker
+              image: <image-repository>:<image-tag>
+              env:
+                - name: ROLE
+                  value: aimie-token-usage
+              volumeMounts:
+                - name: appsettings
+                  mountPath: /mnt/keyvault
+                  readOnly: true
+              resources:
+                requests: {cpu: 25m, memory: 256Mi}
+                limits: {cpu: "1", memory: 1Gi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ingestion-token-usage
+  namespace: billing-operations
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: billing-operations
+          restartPolicy: Never
+          volumes:
+            - name: appsettings
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: billing-operations-appsettings
+          containers:
+            - name: worker
+              image: <image-repository>:<image-tag>
+              env:
+                - name: ROLE
+                  value: ingestion-token-usage
+              volumeMounts:
+                - name: appsettings
+                  mountPath: /mnt/keyvault
+                  readOnly: true
+              resources:
+                requests: {cpu: 25m, memory: 256Mi}
+                limits: {cpu: "1", memory: 1Gi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup-usage-tokens
+  namespace: billing-operations
+spec:
+  schedule: "0 3 15 * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: billing-operations
+          restartPolicy: Never
+          volumes:
+            - name: appsettings
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: billing-operations-appsettings
+          containers:
+            - name: worker
+              image: <image-repository>:<image-tag>
+              env:
+                - name: ROLE
+                  value: cleanup-usage-tokens
+              volumeMounts:
+                - name: appsettings
+                  mountPath: /mnt/keyvault
+                  readOnly: true
+              resources:
+                requests: {cpu: 25m, memory: 256Mi}
+                limits: {cpu: "1", memory: 1Gi}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: invoice-generator
+  namespace: billing-operations
+spec:
+  suspend: <invoice-generator-suspend>
+  schedule: "0 0 1 * *"
+  timeZone: America/New_York
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: billing-operations
+          restartPolicy: Never
+          volumes:
+            - name: appsettings
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes:
+                  secretProviderClass: billing-operations-appsettings
+          containers:
+            - name: worker
+              image: <image-repository>:<image-tag>
+              env:
+                - name: ROLE
+                  value: invoice-generator
+              volumeMounts:
+                - name: appsettings
+                  mountPath: /mnt/keyvault
+                  readOnly: true
+              resources:
+                requests: {cpu: 25m, memory: 256Mi}
+                limits: {cpu: "1", memory: 1Gi}

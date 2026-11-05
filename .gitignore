@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/__pycache__/
+*.user
+*.suo
+.vscode/*.appsettings.json
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+!appsettings.production.example.json
+/.env
+/.env.*
+/.devcontainer/.env
+/config.toml

@@ -1,0 +1,55 @@
+name: Request private main integration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'ProBonoLaw/PBL-Billing-Operations' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: private-upstream-sync
+    steps:
+      - name: Check configuration
+        env:
+          UPSTREAM_OWNER: ${{ secrets.UPSTREAM_OWNER }}
+          UPSTREAM_REPOSITORY: ${{ secrets.UPSTREAM_REPOSITORY }}
+          SYNC_NOTIFY_APP_ID: ${{ vars.SYNC_NOTIFY_APP_ID }}
+        run: |
+          for name in UPSTREAM_OWNER UPSTREAM_REPOSITORY SYNC_NOTIFY_APP_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Set private-upstream-sync environment setting $name"
+              exit 1
+            fi
+          done
+          if [[ ! "$UPSTREAM_OWNER" =~ ^[A-Za-z0-9-]+$ ||
+                ! "$UPSTREAM_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "::error::Invalid private upstream owner or repository"
+            exit 1
+          fi
+      - name: Create notification token
+        id: notification-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SYNC_NOTIFY_APP_ID }}
+          private-key: ${{ secrets.SYNC_NOTIFY_APP_PRIVATE_KEY }}
+          owner: ${{ secrets.UPSTREAM_OWNER }}
+          repositories: ${{ secrets.UPSTREAM_REPOSITORY }}
+          permission-actions: write
+      - name: Request integration on the protected private control branch
+        env:
+          UPSTREAM_OWNER: ${{ secrets.UPSTREAM_OWNER }}
+          UPSTREAM_REPOSITORY: ${{ secrets.UPSTREAM_REPOSITORY }}
+          GH_TOKEN: ${{ steps.notification-token.outputs.token }}
+        run: |
+          gh api --method POST \
+            "repos/${UPSTREAM_OWNER}/${UPSTREAM_REPOSITORY}/actions/workflows/integrate-public-main.yml/dispatches" \
+            -f ref=private-sync-control

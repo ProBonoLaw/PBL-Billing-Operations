@@ -1,0 +1,11 @@
+**/bin
+**/obj
+.git
+.github
+.devcontainer
+.vscode
+config.toml
+appsettings*.json
+tests
+*.user
+*.suo

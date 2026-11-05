@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-operations-gateway
+  namespace: billing-operations
+spec:
+  replicas: <gateway-replicas>
+  selector:
+    matchLabels:
+      app: billing-operations-gateway
+  template:
+    metadata:
+      labels:
+        app: billing-operations-gateway
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: billing-operations
+      volumes:
+        - name: appsettings
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: billing-operations-appsettings
+      containers:
+        - name: gateway
+          image: <image-repository>:<image-tag>
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ROLE
+              value: gateway
+          volumeMounts:
+            - name: appsettings
+              mountPath: /mnt/keyvault
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: 25m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-operations-gateway
+  namespace: billing-operations
+spec:
+  type: ClusterIP
+  selector:
+    app: billing-operations-gateway
+  ports:
+    - port: 80
+      targetPort: 8080

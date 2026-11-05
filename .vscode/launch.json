@@ -1,0 +1,109 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Billing Operations: Gateway (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "gateway",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5080"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Billing Operations: AIMIE Stats (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "aimie-stats",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Billing Operations: AIMIE Token Usage (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "aimie-token-usage",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Billing Operations: Ingestion Token Usage (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "ingestion-token-usage",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Billing Operations: Cleanup Usage Tokens (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "cleanup-usage-tokens",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Billing Operations: Invoice Generator (Azure Test)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build BillingOperations",
+      "program": "${workspaceFolder}/src/BillingOperations/bin/Debug/net10.0/BillingOperations.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/BillingOperations",
+      "env": {
+        "ROLE": "invoice-generator",
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential",
+        "APPSETTINGS_FILE": "${workspaceFolder}/.vscode/azure-test.appsettings.json",
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ]
+}
